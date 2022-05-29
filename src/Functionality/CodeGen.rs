@@ -31,21 +31,22 @@ fn compile_I(instr: Instruction, addr: u32) -> u32 {
         Tag::Resolved(v) => { 
             if v < addr {
                 imm_sign_negative = true;
-                addr - v
+                (addr - v - 4) >> 2
             } else {
-                v - addr
+                (v - addr - 4) >> 2
             }
          }
         Tag::BuildPending(s) => { 
             let solved = TagResolution::resolve(s);
             if solved < addr {
                 imm_sign_negative = true;
-                addr - solved
+                (addr - solved - 4) >> 2
             } else {
-                solved - addr
+                (solved - addr - 4) >> 2
             }
         },
     };
+
     
     //dbg!(format!("0X{:08X}", imm));
     assert!(imm < 65536, "Given immediate does not fit in 16b");

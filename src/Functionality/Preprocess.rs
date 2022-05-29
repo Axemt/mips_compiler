@@ -76,7 +76,7 @@ pub fn replacement(text: String) -> Vec<(String,LineTag)> {
                     //	<op> $0, i($0) -> <op> $0,$0,i
                     let midpart = &pl[idx_l+1..idx_r].to_string();
                     pl = pl[..idx_l].to_string();
-                    
+
                     if let Some(idx_comma) = pl.find(",") {
                         let mut tmp = pl[..idx_comma].to_string();
                         tmp.push_str(",");
@@ -84,7 +84,6 @@ pub fn replacement(text: String) -> Vec<(String,LineTag)> {
                         tmp.push_str(&pl[idx_comma..]);
                         pl = tmp;
                     } else { panic!("Fatal error: replace failed; Could not find separator <,>") } 
-                    dbg!(&pl);
                 } else { panic!("Unmatched brace") } 
             }
 

@@ -19,7 +19,7 @@ fn main() {
 
     let mut instr_v: Vec<((String, usize),Option<Instruction>)> = Vec::new();
     let mut line_count = 1;
-    let original_addr: u32 = 0x40000000;
+    let original_addr: u32 = 0;
     let mut addr: u32 = original_addr;
 
     //preprocessing
@@ -53,7 +53,7 @@ fn main() {
         match instr_maybe {
             Some(instr) => {
                 let c: u32 = CodeGen::compile(instr, addr);
-                println!(" -> 0X{:08X}", c);
+                println!(" -> 0X{:08X} @ [0X{:08X}]", c, addr);
                 addr += 0x4;
             }
             None => {
