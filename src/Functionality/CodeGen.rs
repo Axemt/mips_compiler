@@ -84,7 +84,6 @@ fn compile_J(instr: Instruction) -> u32 {
     };
 
     let func_c  = (instr.func << 26)    & 0xfc000000;
-    let jtarg_c = (jtarg << 2) & 0xfc000000;
-
+    let jtarg_c = (jtarg & !0xfc000000) >> 2;
     func_c | jtarg_c
 }
