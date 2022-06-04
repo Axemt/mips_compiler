@@ -14,67 +14,11 @@ pub enum LineTag {
     Ignore,
 }
 
-pub fn find_segment_metadata(text: &str) -> HashMap<String, u32> {
+pub fn digest(text: &str) -> (HashMap<String, u32>,Vec<(String, LineTag)>) {
+
     let mut metadata: HashMap<String, u32> = HashMap::new();
 
-    for el in text.split("\n") {
-        let mut pl = el.to_string();
-        match pl.find("#") {
-            Some(idx) => pl = pl.split_at(idx).0.to_string(),
-            None => {}
-        }
-
-        if pl.len() == 0 {
-            continue;
-        }
-
-        match pl.find(".text") {
-            Some(idx) => {
-                let addr_candidate: String = pl.split_at(idx + ".text".len()).1.trim().to_string();
-                let addr: u32 =
-                    if addr_candidate.starts_with("0X") || addr_candidate.starts_with("0x") {
-                        u32::from_str_radix(
-                            addr_candidate
-                                .trim_start_matches("0x")
-                                .trim_start_matches("0X"),
-                            16,
-                        )
-                        .unwrap()
-                    } else {
-                        addr_candidate.parse().unwrap()
-                    };
-
-                metadata.insert(".text".to_string(), addr);
-            }
-            None => {}
-        }
-
-        match pl.find(".data") {
-            Some(idx) => {
-                let addr_candidate: String = pl.split_at(idx + ".data".len()).1.trim().to_string();
-                let addr: u32 =
-                    if addr_candidate.starts_with("0X") || addr_candidate.starts_with("0x") {
-                        u32::from_str_radix(
-                            addr_candidate
-                                .trim_start_matches("0x")
-                                .trim_start_matches("0X"),
-                            16,
-                        )
-                        .unwrap()
-                    } else {
-                        addr_candidate.parse().unwrap()
-                    };
-
-                metadata.insert(".data".to_string(), addr);
-            }
-            None => {}
-        }
-    }
-
-    metadata
-}
-
-pub fn digest(text: &str) -> Vec<(String, LineTag)> {
+    let digest =
     //Pattern is not compatible with Strings, so no 'batch' replace :(
     text.to_ascii_lowercase()
         .split("\n")
@@ -129,8 +73,48 @@ pub fn digest(text: &str) -> Vec<(String, LineTag)> {
                 return (el.to_string(), LineTag::Ignore);
             }
 
-            if pl.contains(".text") || pl.contains(".data") {
-                return (el.to_string(), LineTag::Ignore);
+            match pl.find(".text") {
+                Some(idx) => {
+                    let addr_candidate: String = pl.split_at(idx + ".text".len()).1.trim().to_string();
+                    let addr: u32 =
+                        if addr_candidate.starts_with("0X") || addr_candidate.starts_with("0x") {
+                            u32::from_str_radix(
+                                addr_candidate
+                                    .trim_start_matches("0x")
+                                    .trim_start_matches("0X"),
+                                16,
+                            )
+                            .unwrap()
+                        } else {
+                            addr_candidate.parse().unwrap()
+                        };
+    
+                    metadata.insert(".text".to_string(), addr);
+                    return (el.to_string(), LineTag::Ignore);
+                }
+                None => {}
+            }
+    
+            match pl.find(".data") {
+                Some(idx) => {
+                    let addr_candidate: String = pl.split_at(idx + ".data".len()).1.trim().to_string();
+                    let addr: u32 =
+                        if addr_candidate.starts_with("0X") || addr_candidate.starts_with("0x") {
+                            u32::from_str_radix(
+                                addr_candidate
+                                    .trim_start_matches("0x")
+                                    .trim_start_matches("0X"),
+                                16,
+                            )
+                            .unwrap()
+                        } else {
+                            addr_candidate.parse().unwrap()
+                        };
+    
+                    metadata.insert(".data".to_string(), addr);
+                    return (el.to_string(), LineTag::Ignore);
+                }
+                None => {}
             }
 
             match pl.find(":") {
@@ -163,5 +147,7 @@ pub fn digest(text: &str) -> Vec<(String, LineTag)> {
 
             (el.to_string(), LineTag::Processed(pl))
         })
-        .collect()
+        .collect();
+
+        (metadata, digest)
 }

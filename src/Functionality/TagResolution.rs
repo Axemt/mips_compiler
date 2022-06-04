@@ -44,7 +44,6 @@ pub fn log_or_resolve(tag: &str) -> Tag {
 }
 
 pub fn log_addr(tag: String, addr: u32) {
-    dbg!(&tag);
     TAGDICT.write().unwrap().insert(tag, Tag::Resolved(addr));
 }
 

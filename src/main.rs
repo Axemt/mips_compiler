@@ -1,24 +1,45 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate mut_static;
+extern crate clap;
 
 mod Functionality;
 mod Structures;
 
 use core::panic;
 use std::fs;
+use clap::Parser;
 
 use Functionality::{
     CodeGen, Preprocess,
-    TagResolution::{self, TAGDICT},
+    TagResolution,
 };
 use Structures::Instruction::Instruction;
+
+#[derive(Parser, Debug)]
+#[clap(
+    author = "Axemt <github.com/Axemt>",
+    version = "0.92 built on Feb 21, 2022",
+    about = "A MIPS R3000 32b emulator",
+    long_about = None
+)]
+struct Args {
+    #[clap(short='i', long="input", help = "File to compile", required=true)]
+    input : String,
+    #[clap(short='o', long="output", help = "File to write to", required=true)]
+    output: String
+
+}
+
 fn main() {
+
+    let args = Args::parse();
+
     //initialize the tag_resolutor
     Functionality::TagResolution::init();
 
-    let fs = fs::read_to_string("irqh.s").unwrap();
-    let metadata = Preprocess::find_segment_metadata(&fs);
+    let fs = fs::read_to_string(args.input).unwrap();
+    let (metadata, code_digest) = Preprocess::digest(&fs);
 
     if !metadata.contains_key(".text") {
         panic!("\".text\" segment not defined for this file!");
@@ -34,7 +55,7 @@ fn main() {
     let mut line_count = 1;
 
     //preprocessing
-    for (original_line, processed) in Preprocess::digest(&fs) {
+    for (original_line, processed) in code_digest {
         let instr: Option<Instruction>;
         //dbg!(&processed);
         match processed {
