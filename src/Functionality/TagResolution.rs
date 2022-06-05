@@ -3,7 +3,7 @@ use std::{borrow::BorrowMut, collections::HashMap, sync::Mutex};
 
 #[derive(Debug, Clone)]
 pub enum Tag {
-    Imm(u32),
+    Imm(u32, bool),
     BuildPending(String),
     Resolved(u32),
 }

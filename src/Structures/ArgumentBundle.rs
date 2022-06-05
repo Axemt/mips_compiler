@@ -24,7 +24,7 @@ impl Default for ArgumentBundle {
             rt: Default::default(),
             rd: Default::default(),
             sham: Default::default(),
-            imm: Tag::Imm(0),
+            imm: Tag::Imm(0, false),
         }
     }
 }
@@ -65,7 +65,7 @@ impl ArgumentBundle {
                     rt,
                     rd: 0,
                     sham: 0,
-                    imm: Tag::Imm(0),
+                    imm: Tag::Imm(0, false),
                 };
             }
             _ => {
@@ -79,7 +79,7 @@ impl ArgumentBundle {
                         rt: 0,
                         rd,
                         sham: 0,
-                        imm: Tag::Imm(0),
+                        imm: Tag::Imm(0, false),
                     };
                 };
 
@@ -102,7 +102,7 @@ impl ArgumentBundle {
                     rt,
                     rd,
                     sham,
-                    imm: Tag::Imm(0),
+                    imm: Tag::Imm(0, false),
                 }
             }
         }
@@ -129,7 +129,8 @@ impl ArgumentBundle {
                     == imm_candidate.len()
                 {
                     //all characters were numbers, it is a proper imm
-                    Tag::Imm(imm_candidate.parse().unwrap())
+                    let imm: i32 = imm_candidate.parse().unwrap();
+                    Tag::Imm(imm as u32, imm < 0)
                 } else {
                     TagResolution::log_or_resolve(imm_candidate)
                 };
@@ -147,7 +148,8 @@ impl ArgumentBundle {
                     == imm_candidate.len()
                 {
                     //all characters were numbers, it is a proper imm
-                    Tag::Imm(imm_candidate.parse().unwrap())
+                    let imm: i32 = imm_candidate.parse().unwrap();
+                    Tag::Imm(imm as u32, imm < 0)
                 } else {
                     TagResolution::log_or_resolve(imm_candidate)
                 };
@@ -157,11 +159,19 @@ impl ArgumentBundle {
                 rt = arg_vec.pop_front().unwrap().parse().unwrap();
                 rs = arg_vec.pop_front().unwrap().parse().unwrap();
                 let imm_candidate: String = arg_vec.pop_front().unwrap().to_string();
-                imm = Tag::Imm(if imm_candidate.starts_with("0X") || imm_candidate.starts_with("0x") {
-                    u32::from_str_radix(imm_candidate.trim_start_matches("0x").trim_start_matches("0X"),16).unwrap()
+                imm = if imm_candidate.starts_with("0X") || imm_candidate.starts_with("0x") {
+                    let imm = i32::from_str_radix(
+                        imm_candidate
+                            .trim_start_matches("0x")
+                            .trim_start_matches("0X"),
+                        16,
+                    )
+                    .unwrap();
+                    Tag::Imm(imm as u32, imm < 0)
                 } else {
-                    imm_candidate.parse().unwrap()
-                });
+                    let imm: i32 = imm_candidate.parse().unwrap();
+                    Tag::Imm(imm as u32, imm < 0)
+                };
             }
         }
 
@@ -176,9 +186,15 @@ impl ArgumentBundle {
 
     fn construct_J(mut arg_vec: VecDeque<&str>, _func: u32) -> Self {
         let imm_candidate = arg_vec.pop_front().unwrap();
-        let imm = if imm_candidate.matches(char::is_numeric).collect::<String>().len() == imm_candidate.len() {
+        let imm = if imm_candidate
+            .matches(char::is_numeric)
+            .collect::<String>()
+            .len()
+            == imm_candidate.len()
+        {
             //all characters were numbers, it is a proper imm
-            Tag::Imm(imm_candidate.parse().unwrap())
+            let imm: i32 = imm_candidate.parse().unwrap();
+            Tag::Imm(imm as u32, imm < 0)
         } else {
             TagResolution::log_or_resolve(imm_candidate)
         };

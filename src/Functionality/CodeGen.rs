@@ -25,38 +25,39 @@ pub fn compile(instr: Instruction, addr: u32) -> u32 {
 }
 
 fn compile_I(instr: Instruction, addr: u32) -> u32 {
-    let mut imm_sign_negative = false;
+    let imm_sign_negative = false;
     let imm = match instr.args.imm {
-        Tag::Imm(v) => v,
-        Tag::Resolved(v) => {
-            if v < addr {
-                imm_sign_negative = true;
-                (addr - v - 4) >> 2
+        Tag::Imm(v, imm_sign_negative) => {
+            if imm_sign_negative {
+                v | 0b00000000000000001000000000000000
             } else {
-                (v - addr - 4) >> 2
+                v
+            }
+        }
+        Tag::Resolved(tagaddr) => {
+            if tagaddr < addr {
+                //since tagaddr and addr are u32, we need to force them to fit to 16b with the bitmask
+                ((tagaddr.overflowing_sub(addr).0 - 4) >> 2) & 0x0000ffff
+            } else {
+                (tagaddr - addr - 4) >> 2
             }
         }
         Tag::BuildPending(s) => {
-            let solved = TagResolution::resolve(s);
-            if solved < addr {
-                imm_sign_negative = true;
-                (addr - solved - 4) >> 2
+            let tagaddr = TagResolution::resolve(s);
+            if tagaddr < addr {
+                ((tagaddr.overflowing_sub(addr).0 - 4) >> 2) & 0x0000ffff
             } else {
-                (solved - addr - 4) >> 2
+                (tagaddr - addr - 4) >> 2
             }
         }
     };
 
-    //dbg!(format!("0X{:08X}", imm));
     assert!(imm < 65536, "Given immediate does not fit in 16b");
     let func_c = (instr.func << 26) & 0b11111100000000000000000000000000;
     let rs_c = (instr.args.rs << 21) & 0b00000011111000000000000000000000;
     let rt_c = (instr.args.rt << 16) & 0b00000000000111110000000000000000;
     let mut imm_c = imm & 0b00000000000000001111111111111111;
 
-    if imm_sign_negative {
-        imm_c = imm_c | 0b00000000000000001000000000000000;
-    }
     func_c | rs_c | rt_c | imm_c
 }
 
@@ -71,8 +72,16 @@ fn compile_R(instr: Instruction) -> u32 {
 }
 
 fn compile_J(instr: Instruction) -> u32 {
+    let imm_sign_negative = false;
     let jtarg = match instr.args.imm {
-        Tag::Imm(v) | Tag::Resolved(v) => v,
+        Tag::Imm(v, imm_sign_negative) => {
+            if imm_sign_negative {
+                v | 0b00000000000000001000000000000000
+            } else {
+                v
+            }
+        }
+        Tag::Resolved(v) => v,
         Tag::BuildPending(s) => TagResolution::resolve(s),
     };
 

@@ -1,19 +1,16 @@
 #[macro_use]
 extern crate lazy_static;
-extern crate mut_static;
 extern crate clap;
+extern crate mut_static;
 
 mod Functionality;
 mod Structures;
 
+use clap::Parser;
 use core::panic;
 use std::fs;
-use clap::Parser;
 
-use Functionality::{
-    CodeGen, Preprocess,
-    TagResolution,
-};
+use Functionality::{CodeGen, Preprocess, TagResolution};
 use Structures::Instruction::Instruction;
 
 #[derive(Parser, Debug)]
@@ -24,15 +21,18 @@ use Structures::Instruction::Instruction;
     long_about = None
 )]
 struct Args {
-    #[clap(short='i', long="input", help = "File to compile", required=true)]
-    input : String,
-    #[clap(short='o', long="output", help = "File to write to", required=true)]
-    output: String
-
+    #[clap(short = 'i', long = "input", help = "File to compile", required = true)]
+    input: String,
+    #[clap(
+        short = 'o',
+        long = "output",
+        help = "File to write to",
+        required = true
+    )]
+    output: String,
 }
 
 fn main() {
-
     let args = Args::parse();
 
     //initialize the tag_resolutor
