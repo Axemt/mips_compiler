@@ -1,5 +1,6 @@
 
 use std::collections::HashMap;
+use crate::Structures::Errors::{MetadataError};
 
 #[derive(Debug)]
 pub enum LineTag {
@@ -136,6 +137,7 @@ pub fn digest(text: &str) -> (HashMap<String, u32>,Vec<(String, LineTag)>) {
                     }
                 } else {
                     panic!("Unmatched brace")
+                    //Err propagation in Map??
                 }
             }
 
@@ -144,4 +146,28 @@ pub fn digest(text: &str) -> (HashMap<String, u32>,Vec<(String, LineTag)>) {
         .collect();
 
         (metadata, digest)
+}
+
+pub fn check_metadata(metadata: HashMap<String, u32>) -> Result<(u32, Option<u32>), MetadataError> {
+
+    if !metadata.contains_key(".text") {
+        return Err(MetadataError::NoSegmentData(".text".into()));
+    }
+
+    let code_base_addr: u32 = metadata[".text"];
+    if !code_base_addr % 4 == 0 {
+        return Err(MetadataError::Align(".text".into()));
+    }
+
+    let data_base_addr = if metadata.contains_key(".data") {
+        let data_base_addr_candidate = metadata[".data"];
+        if !data_base_addr_candidate % 4 == 0 {
+            return Err(MetadataError::Align(".data".into()));
+        }
+        Some(data_base_addr_candidate)
+    } else {
+        None
+    };
+
+    Ok((code_base_addr, data_base_addr))
 }

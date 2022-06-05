@@ -6,7 +6,7 @@ use super::{
 use crate::Functionality::TagResolution;
 use crate::Functionality::TagResolution::Tag;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 #[derive(Debug)]
 pub struct ArgumentBundle {
@@ -43,10 +43,10 @@ impl ArgumentBundle {
 
     fn construct_R(mut arg_vec: VecDeque<&str>, func: u32) -> Self {
         // rd first except in mult, div and jr where it is rs
-        let mut rd;
-        let mut rs;
-        let mut rt;
-        let mut sham;
+        let rd: u32;
+        let rs: u32;
+        let rt: u32;
+        let sham: u32;
         match func {
             R::MULT | R::MULTU | R::DIV | R::DIVU | R::JR => {
                 // <op> rs ..

@@ -1,5 +1,7 @@
 use mut_static::MutStatic;
-use std::{borrow::BorrowMut, collections::HashMap, sync::Mutex};
+use std::collections::HashMap;
+
+use crate::Structures::Errors::CompileError;
 
 #[derive(Debug, Clone)]
 pub enum Tag {
@@ -9,7 +11,7 @@ pub enum Tag {
 }
 
 lazy_static! {
-    pub static ref TAGDICT: MutStatic<HashMap<String, Tag>> = { MutStatic::new() };
+    pub static ref TAGDICT: MutStatic<HashMap<String, Tag>> = MutStatic::new();
 }
 
 pub fn init() {
@@ -47,10 +49,10 @@ pub fn log_addr(tag: String, addr: u32) {
     TAGDICT.write().unwrap().insert(tag, Tag::Resolved(addr));
 }
 
-pub fn resolve(tag: String) -> u32 {
+pub fn resolve(tag: String) -> Result<u32, CompileError> {
     if let Tag::Resolved(addr) = TAGDICT.read().unwrap()[&tag] {
-        addr
+        Ok(addr)
     } else {
-        panic!("Unresolved tag in compile step")
+        Err(CompileError::TagResolution(tag))
     }
 }
