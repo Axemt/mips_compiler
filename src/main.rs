@@ -13,6 +13,7 @@ mod Structures;
 use clap::Parser;
 use std::fs;
 use std::process::exit;
+use std::time::Instant;
 
 use Functionality::{CodeGen, Preprocess, TagResolution};
 use Structures::Data::Data;
@@ -41,6 +42,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
+    let timer = Instant::now();
     //initialize the tag_resolutor
     Functionality::TagResolution::init();
 
@@ -113,4 +115,6 @@ fn main() {
     };
 
     CodeGen::pack_and_write(args.output, code_base_addr, code, data_base_addr, data);
+
+    println!("\nFinished in {:?}", timer.elapsed());
 }
