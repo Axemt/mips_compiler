@@ -15,7 +15,10 @@ lazy_static! {
 }
 
 pub fn init() {
-    TAGDICT.set(std::collections::HashMap::new()).unwrap();
+    //singleton pattern
+    if TAGDICT.is_set().unwrap() { return; }
+
+    TAGDICT.set(HashMap::new()).unwrap();
     TAGDICT
         .write()
         .unwrap()
@@ -55,4 +58,10 @@ pub fn resolve(tag: String) -> Result<u32, CompileError> {
     } else {
         Err(CompileError::TagResolution(tag))
     }
+}
+
+#[test]
+fn single_tagdict_instance_safe() {
+    init();
+    init();
 }

@@ -1,3 +1,4 @@
+use crate::Structures::Data::{DType, Data};
 use crate::Structures::Instruction::{Instruction, InstructionType};
 use crate::Structures::RELFHeaders::{RelfHeader32, SectionHeader32};
 
@@ -16,7 +17,7 @@ pub fn pack_and_write(
     code_base_addr: u32,
     code: Vec<u32>,
     data_base_addr: u32,
-    data: Vec<Vec<u8>>,
+    data: Vec<u8>,
 ) {
     let mut relf_header = RelfHeader32::default();
     relf_header.e_entry = code_base_addr;
@@ -30,21 +31,23 @@ pub fn pack_and_write(
     program_header.p_memsz = code.len() as u32 * 4;
     program_header.p_flags = 0x05000000;
 
-    let mut data_header = SectionHeader32::default();
-    data_header.p_type = 0x00000001;
-    data_header.p_offset = relf_header.e_phentsize as u32;
-    data_header.p_vaddr = 0; //TODO
-    data_header.p_paddr = data_base_addr;
-    data_header.p_filesz = 0; // TODO data.len() as u32 * 4
-    data_header.p_memsz = 0; // TODO data.len() as u32 * 4
-    data_header.p_flags = 0x06000000;
+    let data_header = SectionHeader32 {
+        p_type: 0x00000001,
+        p_offset: relf_header.e_phentsize as u32,
+        p_vaddr: data_base_addr,
+        p_paddr: data_base_addr,
+        p_filesz: data.len() as u32 * 4,
+        p_memsz: data.len() as u32 * 4,
+        p_flags: 0x06000000,
+        ..Default::default()
+    };
 
     {
         let mut fd = File::create(path).expect("Could not create the output file");
-        let ELFheaderFormat = structure!(">IBBBBB7sHHIIIIIHHHHHH");
-        let pdHeaderFormat = structure!(">IIIIIIII");
+        let elf_header_format = structure!(">IBBBBB7sHHIIIIIHHHHHH");
+        let pd_header_format = structure!(">IIIIIIII");
 
-        let elfHeader = ELFheaderFormat
+        let elf_header = elf_header_format
             .pack(
                 relf_header.e_ident_MAG,
                 relf_header.e_ident_CLASS,
@@ -69,9 +72,9 @@ pub fn pack_and_write(
             )
             .unwrap();
 
-        fd.write_all(&elfHeader).expect("Could not write to file");
+        fd.write_all(&elf_header).expect("Could not write to file");
 
-        let text_header_p = pdHeaderFormat
+        let text_header_p = pd_header_format
             .pack(
                 program_header.p_type,
                 program_header.p_offset,
@@ -87,7 +90,7 @@ pub fn pack_and_write(
         fd.write_all(&text_header_p)
             .expect("Could not write to file");
 
-        let data_header_p = pdHeaderFormat
+        let data_header_p = pd_header_format
             .pack(
                 data_header.p_type,
                 data_header.p_offset,
@@ -107,25 +110,60 @@ pub fn pack_and_write(
             fd.write(&c.to_be_bytes()).expect("Could not write to file");
         }
 
-        //Nothing regarding data atm
+        // data is already an u8 buffer :)
+        fd.write(&data).expect("Could not write to file");
     }
 }
 
 pub fn compile(
     code_base_addr: u32,
     instr_v: Vec<((String, usize), Option<Instruction>)>,
-) -> Result<(Vec<u32>, Vec<Vec<u8>>), CompileError> {
-    let mut addr = code_base_addr;
-    let mut code: Vec<u32> = Vec::new();
-    let mut data: Vec<Vec<u8>> = Vec::new();
-    for ((original_line, line_count), instr_maybe) in instr_v {
+    data_base_addr: u32,
+    data_v: Vec<((String, usize), Option<Data>)>,
+) -> Result<(Vec<u32>, Vec<u8>), CompileError> {
+    let mut d_addr = data_base_addr;
+    let mut data: Vec<u8> = Vec::new(); // dense array of contiguous data. We do not allow hosting data at different mem locations for now
+
+    for ((original_line, line_count), data_maybe) in data_v {
         print!("{}\t| {} ", line_count, original_line);
-        match instr_maybe {
-            Some(instr) => {
-                let c: u32 = compile_single(instr, addr)?;
-                println!(" -> 0X{:08X} @ [0X{:08X}]", c, addr);
-                addr += 0x4;
-                code.push(c);
+        match data_maybe {
+            Some(dt) => {
+
+                //ensure alignment
+                match dt.dt {
+                    DType::Word => {
+                        if d_addr % 4 != 0 {
+                            return Err(CompileError::AlignmentError(4, d_addr, dt.tagname));
+                        }
+                    }
+                    DType::Half => {
+                        if d_addr % 2 != 0 {
+                            return Err(CompileError::AlignmentError(2, d_addr, dt.tagname));
+                        }
+                    }
+                    DType::Byte | DType::ZTerminatedString | DType::String | DType::Space => {}
+                }
+
+                TagResolution::log_addr(dt.tagname, d_addr);
+
+                print!(" -> 0x");
+                let mut print_ct = 0;
+                for byte in &dt.contents {
+                    print!("{:02X}", byte);
+                    print_ct += 1;
+                    if print_ct > 4 {
+                        break;
+                    }
+                }
+                if dt.contents.len() > 4 {
+                    print!("...")
+                };
+
+                println!(" @ [0x{:08X}]", d_addr);
+                d_addr += dt.contents.len() as u32;
+                for byte in dt.contents {
+                    data.push(byte);
+                }
             }
             None => {
                 println!();
@@ -133,10 +171,40 @@ pub fn compile(
         }
     }
 
+    if code_base_addr % 2 != 0 {
+        return Err(CompileError::AlignmentError(2, code_base_addr, String::from(".text")));
+    }
+
+    let mut c_addr = code_base_addr;
+    let mut code: Vec<u32> = Vec::new();
+
+    for ((original_line, line_count), instr_maybe) in instr_v {
+        print!("{}\t| {} ", line_count, original_line);
+        match instr_maybe {
+            Some(instr) => {
+                let compiled: u32 = compile_single(instr, c_addr)?;
+                println!(" -> 0x{:08X} @ [0x{:08X}]", compiled, c_addr);
+                c_addr += 0x4;
+                code.push(compiled);
+            }
+            None => {
+                println!();
+            }
+        }
+    }
+
+    //ensure no overlaps between segments
+    //code is either after the data segment or before it
+    assert!(
+        (code_base_addr > data_base_addr + data.len() as u32)
+            || (code.len() as u32 + code_base_addr < data_base_addr),
+        "Code and Data segments overlap!"
+    );
+
     Ok((code, data))
 }
 
-pub fn compile_single(instr: Instruction, addr: u32) -> Result<u32, CompileError> {
+fn compile_single(instr: Instruction, addr: u32) -> Result<u32, CompileError> {
     //
     // See https://uweb.engr.arizona.edu/~ece369/Resources/spim/MIPSReference.pdf for sources on encoding formats
     // Not all instructions are implemented but including them now saves future time
@@ -226,3 +294,44 @@ fn compile_J(instr: Instruction) -> Result<u32, CompileError> {
     let jtarg_c = (jtarg & !0xfc000000) >> 2;
     Ok(func_c | jtarg_c)
 }
+
+#[test]
+fn compile_label_data_resolution() {
+    TagResolution::init();
+    let d = String::from("some_tag: .word 1,2,3,4");
+    let i = String::from("j some_tag");
+    dbg!(&d);
+    dbg!(&i);
+
+    const ADDR_CODE: u32 = 0x00000000;
+    const ADDR_DATA: u32 = 0x0000ff00;
+    let (code, data)  = match compile(ADDR_CODE, vec![((i.clone(), 1), Some(i.into()))], ADDR_DATA, vec![((d.clone(), 1), Some(d.into()))]) {
+        Ok((c,d)) => (c,d),
+        Err(eobj) => {panic!("{}",eobj)}
+    };
+    println!("{:08X}",(code[0] & !0xfc000000) << 2);
+    assert!((code[0] & !0xfc000000) << 2 == ADDR_DATA);
+}
+
+#[test]
+#[should_panic]
+fn label_data_non_aligned() {
+    TagResolution::init();
+    let d = String::from("some_tag: .word 1,2,3,4");
+    let i = String::from("j some_tag");
+    dbg!(&d);
+    dbg!(&i);
+
+    const ADDR_CODE: u32 = 0x00000000;
+    const ADDR_DATA: u32 = 0x0000ffdd;
+    let (code, data)  = match compile(ADDR_CODE, vec![((i.clone(), 1), Some(i.into()))], ADDR_DATA, vec![((d.clone(), 1), Some(d.into()))]) {
+        Ok((c,d)) => (c,d),
+        Err(eobj) => {panic!("{}",eobj)}
+    };
+}
+
+
+
+
+
+

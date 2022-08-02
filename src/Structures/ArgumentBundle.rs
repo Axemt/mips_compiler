@@ -60,13 +60,13 @@ impl ArgumentBundle {
                     rt = 0
                 }
 
-                return ArgumentBundle {
+                ArgumentBundle {
                     rs,
                     rt,
                     rd: 0,
                     sham: 0,
                     imm: Tag::Imm(0, false),
-                };
+                }
             }
             _ => {
                 // <op> rd rs ...

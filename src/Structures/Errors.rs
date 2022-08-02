@@ -21,11 +21,13 @@ impl std::fmt::Display for MetadataError {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum CompileError {
     ImmSize,
     RegisterParse(String),
     TagResolution(String),
+    AlignmentError(u32, u32, String)
 }
 
 impl std::fmt::Display for CompileError {
@@ -35,7 +37,24 @@ impl std::fmt::Display for CompileError {
             CompileError::RegisterParse(reg) => write!(f, "Error parsing register {reg}"),
             CompileError::TagResolution(tag) => {
                 write!(f, "Unresolved tag \"{tag}\" in compile step")
+            },
+            CompileError::AlignmentError(alignment, addr, symbol) => {
+                write!(f, "type address is not {}-aligned: @ {} ; Symbol: {}",alignment , addr, symbol)
             }
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub enum SyntaxError {
+    NoMatchingPair(char),
+}
+
+impl std::fmt::Display for SyntaxError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SyntaxError::NoMatchingPair(c) => write!(f, "Syntax error: No {} pair found", c),
         }
     }
 }

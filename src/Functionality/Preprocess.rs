@@ -1,18 +1,17 @@
+use crate::Structures::Errors::MetadataError;
 
-use std::collections::HashMap;
-use crate::Structures::Errors::{MetadataError};
+use crate::Structures::RELFHeaders::Sections;
 
 #[derive(Debug)]
 pub enum LineTag {
+    SectionStart(u32, Sections),
     Processed(String),
     Tag(String),
     Ignore,
 }
 
-pub fn digest(text: &str) -> (HashMap<String, u32>,Vec<(String, LineTag)>) {
-
-    let mut metadata: HashMap<String, u32> = HashMap::new();
-
+pub fn digest(text: &str) -> Vec<(String, LineTag)> {
+    let mut code_segment_present = false;
     let digest =
     //Pattern is not compatible with Strings, so no 'batch' replace :(
     text.to_ascii_lowercase()
@@ -81,15 +80,16 @@ pub fn digest(text: &str) -> (HashMap<String, u32>,Vec<(String, LineTag)>) {
                             )
                             .unwrap()
                         } else {
-                            addr_candidate.parse().unwrap()
+                            addr_candidate.parse().expect("Syntax Error: Malformed address")
                         };
-    
-                    metadata.insert(".text".to_string(), addr);
-                    return (el.to_string(), LineTag::Ignore);
+                    if !addr % 4 == 0 {
+                        panic!("{}",MetadataError::Align(".text".into()));
+                    }
+                    code_segment_present = true;
+                    return (el.to_string(), LineTag::SectionStart(addr, Sections::Code));
                 }
                 None => {}
             }
-    
             match pl.find(".data") {
                 Some(idx) => {
                     let addr_candidate: String = pl.split_at(idx + ".data".len()).1.trim().to_string();
@@ -105,9 +105,10 @@ pub fn digest(text: &str) -> (HashMap<String, u32>,Vec<(String, LineTag)>) {
                         } else {
                             addr_candidate.parse().unwrap()
                         };
-    
-                    metadata.insert(".data".to_string(), addr);
-                    return (el.to_string(), LineTag::Ignore);
+                    if !addr % 4 == 0 {
+                        panic!("{}",MetadataError::Align(".data".into()));
+                    }
+                    return (el.to_string(), LineTag::SectionStart(addr, Sections::Data));
                 }
                 None => {}
             }
@@ -145,29 +146,8 @@ pub fn digest(text: &str) -> (HashMap<String, u32>,Vec<(String, LineTag)>) {
         })
         .collect();
 
-        (metadata, digest)
-}
-
-pub fn check_metadata(metadata: HashMap<String, u32>) -> Result<(u32, Option<u32>), MetadataError> {
-
-    if !metadata.contains_key(".text") {
-        return Err(MetadataError::NoSegmentData(".text".into()));
+    if !code_segment_present {
+        panic!("{}", MetadataError::NoSegmentData(".text".into()))
     }
-
-    let code_base_addr: u32 = metadata[".text"];
-    if !code_base_addr % 4 == 0 {
-        return Err(MetadataError::Align(".text".into()));
-    }
-
-    let data_base_addr = if metadata.contains_key(".data") {
-        let data_base_addr_candidate = metadata[".data"];
-        if !data_base_addr_candidate % 4 == 0 {
-            return Err(MetadataError::Align(".data".into()));
-        }
-        Some(data_base_addr_candidate)
-    } else {
-        None
-    };
-
-    Ok((code_base_addr, data_base_addr))
+    digest
 }
