@@ -27,7 +27,7 @@ pub enum CompileError {
     ImmSize,
     RegisterParse(String),
     TagResolution(String),
-    AlignmentError(u32, u32, String)
+    AlignmentError(u32, u32, String),
 }
 
 impl std::fmt::Display for CompileError {
@@ -37,9 +37,15 @@ impl std::fmt::Display for CompileError {
             CompileError::RegisterParse(reg) => write!(f, "Error parsing register {reg}"),
             CompileError::TagResolution(tag) => {
                 write!(f, "Unresolved tag \"{tag}\" in compile step")
-            },
+            }
             CompileError::AlignmentError(alignment, addr, symbol) => {
-                write!(f, "type address is not {}-aligned: @ {} ; Symbol: {}",alignment , addr, symbol)
+                write!(
+                    f,
+                    "type address is not {}-aligned: @ {} ; Symbol: {}",
+                    alignment,
+                    format!("{:08X}", addr),
+                    symbol
+                )
             }
         }
     }

@@ -128,7 +128,6 @@ pub fn compile(
         print!("{}\t| {} ", line_count, original_line);
         match data_maybe {
             Some(dt) => {
-
                 //ensure alignment
                 match dt.dt {
                     DType::Word => {
@@ -172,7 +171,11 @@ pub fn compile(
     }
 
     if code_base_addr % 2 != 0 {
-        return Err(CompileError::AlignmentError(2, code_base_addr, String::from(".text")));
+        return Err(CompileError::AlignmentError(
+            2,
+            code_base_addr,
+            String::from(".text"),
+        ));
     }
 
     let mut c_addr = code_base_addr;
@@ -305,11 +308,18 @@ fn compile_label_data_resolution() {
 
     const ADDR_CODE: u32 = 0x00000000;
     const ADDR_DATA: u32 = 0x0000ff00;
-    let (code, data)  = match compile(ADDR_CODE, vec![((i.clone(), 1), Some(i.into()))], ADDR_DATA, vec![((d.clone(), 1), Some(d.into()))]) {
-        Ok((c,d)) => (c,d),
-        Err(eobj) => {panic!("{}",eobj)}
+    let (code, data) = match compile(
+        ADDR_CODE,
+        vec![((i.clone(), 1), Some(i.into()))],
+        ADDR_DATA,
+        vec![((d.clone(), 1), Some(d.into()))],
+    ) {
+        Ok((c, d)) => (c, d),
+        Err(eobj) => {
+            panic!("{}", eobj)
+        }
     };
-    println!("{:08X}",(code[0] & !0xfc000000) << 2);
+    println!("{:08X}", (code[0] & !0xfc000000) << 2);
     assert!((code[0] & !0xfc000000) << 2 == ADDR_DATA);
 }
 
@@ -324,14 +334,15 @@ fn label_data_non_aligned() {
 
     const ADDR_CODE: u32 = 0x00000000;
     const ADDR_DATA: u32 = 0x0000ffdd;
-    let (code, data)  = match compile(ADDR_CODE, vec![((i.clone(), 1), Some(i.into()))], ADDR_DATA, vec![((d.clone(), 1), Some(d.into()))]) {
-        Ok((c,d)) => (c,d),
-        Err(eobj) => {panic!("{}",eobj)}
+    let (code, data) = match compile(
+        ADDR_CODE,
+        vec![((i.clone(), 1), Some(i.into()))],
+        ADDR_DATA,
+        vec![((d.clone(), 1), Some(d.into()))],
+    ) {
+        Ok((c, d)) => (c, d),
+        Err(eobj) => {
+            panic!("{}", eobj)
+        }
     };
 }
-
-
-
-
-
-

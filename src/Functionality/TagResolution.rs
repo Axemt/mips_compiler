@@ -16,7 +16,9 @@ lazy_static! {
 
 pub fn init() {
     //singleton pattern
-    if TAGDICT.is_set().unwrap() { return; }
+    if TAGDICT.is_set().unwrap() {
+        return;
+    }
 
     TAGDICT.set(HashMap::new()).unwrap();
     TAGDICT

@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate clap;
+extern crate core;
 extern crate mut_static;
 extern crate structure;
-extern crate core;
 
 #[allow(non_snake_case)]
 mod Functionality;
@@ -90,8 +90,7 @@ fn main() {
                     Sections::Data => {
                         is_code_segment = false;
                         data_base_addr = a;
-                    }
-                    //_ => is_code_segment = false,
+                    } //_ => is_code_segment = false,
                 }
             }
         }

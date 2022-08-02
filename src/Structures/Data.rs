@@ -1,5 +1,5 @@
-use crate::{CodeGen, TagResolution};
 use super::Errors::SyntaxError;
+use crate::{CodeGen, TagResolution};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DType {
