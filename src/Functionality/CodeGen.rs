@@ -199,8 +199,8 @@ pub fn compile(
     //ensure no overlaps between segments
     //code is either after the data segment or before it
     assert!(
-        (code_base_addr > data_base_addr + data.len() as u32)
-            || (code.len() as u32 + code_base_addr < data_base_addr),
+        ((code_base_addr >= data_base_addr + data.len() as u32)
+            || (code.len() as u32 * 4 + code_base_addr < data_base_addr)),
         "Code and Data segments overlap!"
     );
 
