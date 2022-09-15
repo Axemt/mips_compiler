@@ -11,15 +11,15 @@ pub enum Tag {
 }
 
 lazy_static! {
+    #[derive(Debug)]
     pub static ref TAGDICT: MutStatic<HashMap<String, Tag>> = MutStatic::new();
 }
 
 pub fn init() {
     //singleton pattern
-    if TAGDICT.is_set().unwrap() {
+    if TAGDICT.read().is_ok() {
         return;
     }
-
     TAGDICT.set(HashMap::new()).unwrap();
     TAGDICT
         .write()
